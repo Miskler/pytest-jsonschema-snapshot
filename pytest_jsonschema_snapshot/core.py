@@ -233,6 +233,14 @@ class SchemaShot:
             # --- схема уже была: сравнение и валидация --------------------------------
             schema_updated = False
 
+            def merge_schemas(old: dict, new: dict) -> dict:
+                builder = JsonToSchemaConverter(
+                    format_mode=self.format_mode  # type: ignore[arg-type]
+                )  # , examples=self.examples_limit)
+                builder.add_schema(old)
+                builder.add_schema(new)
+                return builder.to_schema()
+
             if existing_schema != current_schema:  # есть отличия
                 if (self.update_mode or self.reset_mode) and self.update_actions.get("update"):
                     # обновляем файл
@@ -246,12 +254,7 @@ class SchemaShot:
                             json.dump(current_schema, f, indent=2, ensure_ascii=False)
                         self.logger.warning(f"Schema `{name}` updated (reset).\n\n{differences}")
                     elif self.update_mode and not self.reset_mode:
-                        builder = JsonToSchemaConverter(
-                            format_mode=self.format_mode  # type: ignore[arg-type]
-                        )  # , examples=self.examples_limit)
-                        builder.add_schema(existing_schema)
-                        builder.add_schema(current_schema)
-                        merged_schema = builder.to_schema()
+                        merged_schema = merge_schemas(existing_schema, current_schema)
 
                         differences = self.differ.compare(
                             dict(existing_schema), merged_schema
@@ -268,8 +271,10 @@ class SchemaShot:
                         )
                     schema_updated = True
                 elif data is not None:
+                    merged_schema = merge_schemas(existing_schema, current_schema)
+
                     differences = self.differ.compare(
-                        dict(existing_schema), current_schema
+                        dict(existing_schema), merged_schema
                     ).render()
                     GLOBAL_STATS.add_uncommitted(schema_path.name, differences)
 
@@ -293,8 +298,10 @@ class SchemaShot:
                         format_checker=FormatChecker(),
                     )
                 except ValidationError as e:
+                    merged_schema = merge_schemas(existing_schema, current_schema)
+
                     differences = self.differ.compare(
-                        dict(existing_schema), current_schema
+                        dict(existing_schema), merged_schema
                     ).render()
                     pytest.fail(f"\n\n{differences}\n\nValidation error in `{name}`: {e.message}")
 
