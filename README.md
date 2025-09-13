@@ -13,6 +13,7 @@
 [![PyPI - Package Version](https://img.shields.io/pypi/v/pytest-jsonschema-snapshot?color=blue)](https://pypi.org/project/pytest-jsonschema-snapshot/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![BlackCode](https://img.shields.io/badge/code%20style-black-black)](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![mypy](https://img.shields.io/badge/type--checked-mypy-blue?logo=python)](https://mypy.readthedocs.io/en/stable/index.html)
 [![Discord](https://img.shields.io/discord/792572437292253224?label=Discord&labelColor=%232c2f33&color=%237289da)](https://discord.gg/UnJnGHNbBp)
 [![Telegram](https://img.shields.io/badge/Telegram-24A1DE)](https://t.me/miskler_dev)

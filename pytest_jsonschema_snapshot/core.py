@@ -273,9 +273,7 @@ class SchemaShot:
                 elif data is not None:
                     merged_schema = merge_schemas(existing_schema, current_schema)
 
-                    differences = self.differ.compare(
-                        dict(existing_schema), merged_schema
-                    ).render()
+                    differences = self.differ.compare(dict(existing_schema), merged_schema).render()
                     GLOBAL_STATS.add_uncommitted(schema_path.name, differences)
 
                     # только валидируем по старой схеме
@@ -300,9 +298,7 @@ class SchemaShot:
                 except ValidationError as e:
                     merged_schema = merge_schemas(existing_schema, current_schema)
 
-                    differences = self.differ.compare(
-                        dict(existing_schema), merged_schema
-                    ).render()
+                    differences = self.differ.compare(dict(existing_schema), merged_schema).render()
                     pytest.fail(f"\n\n{differences}\n\nValidation error in `{name}`: {e.message}")
 
             return name, schema_updated
