@@ -43,6 +43,7 @@ SAMPLE_DATA = {
         "0": {"order_id": 1001, "amount": 299.99, "status": "completed", "t": "john.doe@example.com"},
         "1": {"order_id": 1002, "amount": 149.50, "status": "pending", "t": [{"da": [1]}]},
         "3": {"order_id": 1004, "amount": 89.00,  "status": "completed", "t": {"da": [1]}},
+        "4": {"order_id": 1004, "amount": 89.00,  "status": "completed", "t": {}},
     },
     # Специально для демонстрации неоднозначного формата
     "mixed_format_field": [

@@ -40,6 +40,6 @@ class JsonToSchemaConverter:
         schema = self._pseudo_array_converter.to_schema()
         
         # 2. Обогащаем схему форматами
-        #schema = self._format_converter.to_schema(schema)
+        schema = self._format_converter.to_schema(schema)
         
         return schema

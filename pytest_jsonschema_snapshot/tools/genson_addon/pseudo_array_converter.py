@@ -1,34 +1,38 @@
+# src/jsonschema_infer/pseudo_array_converter.py
 from __future__ import annotations
 
 import re
 from typing import Any, Dict, List
-
-from genson import SchemaBuilder  # type: ignore[import-untyped]
+from genson import SchemaBuilder
 
 
 class PseudoArrayConverter(SchemaBuilder):
     """
-    A specialized SchemaBuilder extension for converting pseudo-array objects
-    (dictionaries with sequential numeric string keys) into proper JSON Schema
-    representations using patternProperties.
+    Специализированный SchemaBuilder для преобразования псевдо-массивов
+    (словарей с последовательными числовыми строковыми ключами) в patternProperties.
     """
 
     def __init__(
         self,
         schema_uri: str = "https://json-schema.org/draft/2020-12/schema",
     ) -> None:
-        super().__init__()#schema_uri=schema_uri or None)
-        # path → raw object (for pseudo-array analysis)
+        super().__init__()
+        # Храним сырые объекты по путям для анализа псевдо-массивов
         self._raw_at_path: Dict[str, Any] = {}
+        # Храним все добавленные объекты целиком
+        self._all_objects: List[Any] = []
 
     # ------------------------------------------------------------------ #
-    # Collection of raw data during object addition
+    # Сбор сырых данных
     # ------------------------------------------------------------------ #
     def add_object(self, obj: Any) -> None:
+        """Добавляет объект для анализа."""
+        self._all_objects.append(obj)
         self._collect_raw(obj, "#")
         super().add_object(obj)
 
     def _collect_raw(self, obj: Any, path: str) -> None:
+        """Рекурсивно собирает сырые данные по путям."""
         self._raw_at_path[path] = obj
 
         if isinstance(obj, dict):
@@ -39,71 +43,152 @@ class PseudoArrayConverter(SchemaBuilder):
                 self._collect_raw(v, f"{path}/{i}")
 
     # ------------------------------------------------------------------ #
-    # Schema generation with pseudo-array conversion
+    # Генерация схемы с преобразованием псевдо-массивов
     # ------------------------------------------------------------------ #
     def to_schema(self) -> Dict[str, Any]:
+        """Генерирует схему с преобразованными псевдо-массивами."""
         schema = super().to_schema()
         self._convert_pseudo_arrays(schema, "#")
         return schema
 
     # ------------------------------------------------------------------ #
-    # Pseudo-array conversion logic
+    # Логика преобразования псевдо-массивов
     # ------------------------------------------------------------------ #
     def _convert_pseudo_arrays(self, node: Dict[str, Any], path: str) -> None:
+        """
+        Рекурсивно преобразует псевдо-массивы в patternProperties.
+        Теперь использует все добавленные объекты для правильного определения типов.
+        """
         if not (node.get("type") == "object" and "properties" in node):
             self._recurse(node, self._convert_pseudo_arrays, path)
             return
 
-        raw = self._raw_at_path.get(path)
-        if not isinstance(raw, dict):
+        # Получаем все значения для этого пути из всех объектов
+        values_at_path = self._get_all_values_at_path(path)
+        
+        if not values_at_path:
             self._recurse(node, self._convert_pseudo_arrays, path)
             return
 
-        keys = list(raw.keys())
-        if not keys:
+        # Проверяем, являются ли все значения словарями с числовыми ключами
+        all_have_numeric_keys = all(
+            isinstance(v, dict) and 
+            all(isinstance(k, str) and k.isdigit() for k in v.keys())
+            for v in values_at_path if v is not None
+        )
+
+        if not all_have_numeric_keys:
+            self._recurse(node, self._convert_pseudo_arrays, path)
             return
 
-        if all(re.fullmatch(r"\d+", k) for k in keys):
-            int_keys = {int(k) for k in keys}
-            min_k, max_k = min(int_keys), max(int_keys)
-            expected = set(range(min_k, max_k + 1))
+        # Собираем все числовые ключи из всех объектов
+        all_keys = set()
+        for value in values_at_path:
+            if isinstance(value, dict):
+                all_keys.update(value.keys())
 
-            # Consider it a pseudo-array if gaps are no more than 50%
-            if len(int_keys) >= 3 and len(expected - int_keys) / len(expected) <= 0.5:
-                merged_item_schema = self._merge_object_schemas([
-                    subschema for name, subschema in node["properties"].items()
-                    if re.fullmatch(r"\d+", name)
-                ])
+        if not all_keys:
+            return
 
-                node.clear()
-                node.update({
-                    "type": "object",
-                    "propertyNames": {"pattern": "^[0-9]+$"},
-                    "patternProperties": {
-                        "^[0-9]+$": merged_item_schema
-                    },
-                    "additionalProperties": False
-                })
-                return
+        # Проверяем условия для преобразования в псевдо-массив
+        if self._should_convert_to_pseudo_array(all_keys):
+            # Собираем все вложенные объекты для объединения схем
+            nested_objects = []
+            for value in values_at_path:
+                if isinstance(value, dict):
+                    for k in sorted(value.keys(), key=int):
+                        nested_objects.append(value[k])
+
+            # Создаем схему для вложенных объектов
+            item_schema = self._create_schema_for_objects(nested_objects)
+            
+            # Преобразуем в patternProperties
+            node.clear()
+            node.update({
+                "type": "object",
+                "propertyNames": {"pattern": "^[0-9]+$"},
+                "patternProperties": {
+                    "^[0-9]+$": item_schema
+                },
+                "additionalProperties": False
+            })
+            return
 
         self._recurse(node, self._convert_pseudo_arrays, path)
 
-    def _merge_object_schemas(self, schemas: List[Dict[str, Any]]) -> Dict[str, Any]:
-        if not schemas:
+    def _get_all_values_at_path(self, path: str) -> List[Any]:
+        """Получает все значения по указанному пути из всех объектов."""
+        values = []
+        
+        # Если есть значение в _raw_at_path (последний добавленный объект)
+        if path in self._raw_at_path:
+            values.append(self._raw_at_path[path])
+        
+        # Также ищем в предыдущих объектах
+        for obj in self._all_objects[:-1]:  # Все кроме последнего
+            value = self._extract_value_from_path(obj, path)
+            if value is not None:
+                values.append(value)
+        
+        return values
+
+    def _extract_value_from_path(self, obj: Any, path: str) -> Any:
+        """Извлекает значение по пути из объекта."""
+        if path == "#":
+            return obj
+        
+        # Пропускаем начальный #
+        parts = path[2:].split('/') if path.startswith('#/') else path.split('/')
+        
+        current = obj
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            elif isinstance(current, (list, tuple)) and part.isdigit():
+                idx = int(part)
+                if 0 <= idx < len(current):
+                    current = current[idx]
+                else:
+                    return None
+            else:
+                return None
+        
+        return current
+
+    def _should_convert_to_pseudo_array(self, keys: set) -> bool:
+        """Определяет, следует ли преобразовать в псевдо-массив."""
+        if not all(k.isdigit() for k in keys):
+            return False
+        
+        int_keys = {int(k) for k in keys}
+        if len(int_keys) < 3:
+            return False
+        
+        min_k, max_k = min(int_keys), max(int_keys)
+        expected = set(range(min_k, max_k + 1))
+        gaps = len(expected - int_keys)
+        
+        # Преобразуем если пропусков не более 50%
+        return gaps / len(expected) <= 0.5
+
+    def _create_schema_for_objects(self, objects: List[Any]) -> Dict[str, Any]:
+        """Создает схему для списка объектов, объединяя их типы."""
+        if not objects:
             return {"type": "object"}
-        result = {"type": "object", "properties": {}, "required": []}
-        for sch in schemas:
-            result["properties"].update(sch.get("properties", {}))
-            if "required" in sch:
-                result["required"].extend(sch["required"])
-        result["required"] = list(dict.fromkeys(result["required"]))  # Ensure uniqueness
-        result["additionalProperties"] = False
-        return result
+        
+        # Используем genson для объединения типов
+        from .to_schema_converter import JsonToSchemaConverter
+        builder = JsonToSchemaConverter()
+        for obj in objects:
+            builder.add_object(obj)
+        
+        return builder.to_schema()
 
     # ------------------------------------------------------------------ #
-    # Recursion helper
+    # Вспомогательные методы
     # ------------------------------------------------------------------ #
     def _recurse(self, node: Dict[str, Any], func: callable, path: str) -> None:
+        """Рекурсивно обходит схему."""
         if node.get("type") == "object" and "properties" in node:
             for k, sub in node["properties"].items():
                 func(sub, f"{path}/{k}")
