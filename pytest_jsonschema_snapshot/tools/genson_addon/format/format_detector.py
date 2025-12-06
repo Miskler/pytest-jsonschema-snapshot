@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Any
+from typing import Any, Optional
 
 
 class FormatDetector:
@@ -18,8 +18,7 @@ class FormatDetector:
             ): "date-time",
             re.compile(r"^https?://[^\s/$.?#].[^\s]*$", re.I): "uri",
             re.compile(
-                r"^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}"
-                r"(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$"
+                r"^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}" r"(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$"
             ): "ipv4",
         }
     }

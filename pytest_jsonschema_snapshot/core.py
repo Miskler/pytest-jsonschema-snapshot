@@ -145,7 +145,7 @@ class SchemaShot:
         real_name = self._process_name(name)
 
         builder = JsonToSchemaConverter(
-            format_mode=self.format_mode  # type: ignore[arg-type]
+            format_mode=self.format_mode
         )  # , examples=self.examples_limit)
         builder.add_object(data)
         current_schema = builder.to_schema()
@@ -235,7 +235,7 @@ class SchemaShot:
 
             def merge_schemas(old: dict, new: dict) -> dict:
                 builder = JsonToSchemaConverter(
-                    format_mode=self.format_mode  # type: ignore[arg-type]
+                    format_mode=self.format_mode
                 )  # , examples=self.examples_limit)
                 builder.add_schema(old)
                 builder.add_schema(new)
