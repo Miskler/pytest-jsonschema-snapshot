@@ -1,10 +1,12 @@
 import re
 from .base import KeyPatternDetector
+from typing import Set
 
 
 class UUIDKeyDetector(KeyPatternDetector):
     """UUID ключи: 550e8400-e29b-41d4-a716-446655440000"""
     PRIORITY = 70
+    COMMENT = "UUID keys in the standard format"
     
     def __init__(self):
         super().__init__()
@@ -16,23 +18,17 @@ class UUIDKeyDetector(KeyPatternDetector):
 class ISODateTimeDetector(KeyPatternDetector):
     """ISO даты и время."""
     PRIORITY = 60
+    COMMENT = "Datetime in ISO format"
     
     def __init__(self):
         super().__init__()
-        # Поддерживаем различные форматы ISO
-        self.date_patterns = [
-            re.compile(r'^\d{4}-\d{2}-\d{2}$'),
-            re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$'),
-        ]
         self.pattern = re.compile(r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$')
-    
-    def get_pattern_regex(self) -> str:
-        return r'\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?'
 
 
 class ISOCodeDetector(KeyPatternDetector):
     """ISO коды стран (2-3 буквы) или языков (en-US)."""
     PRIORITY = 50
+    COMMENT = "ISO country codes (2-3 letters) and languages"
     
     def __init__(self):
         super().__init__()
@@ -42,32 +38,60 @@ class ISOCodeDetector(KeyPatternDetector):
 class HexKeyDetector(KeyPatternDetector):
     """16-ричные ключи: 0x1a3f, 0xFF."""
     PRIORITY = 40
+    COMMENT = "16-digit numbers with the prefix 0x"
     
     def __init__(self):
         super().__init__()
         self.pattern = re.compile(r'^0x[0-9a-f]+$', re.I)
 
-class AlphabeticKeyDetector(KeyPatternDetector):
-    """Алфавитные ключи: a, b, c, aa, ab."""
-    PRIORITY = 30
+
+class SingleLetterDetector(KeyPatternDetector):
+    """Однобуквенные ключи: a, b, c."""
+    PRIORITY = 35
+    COMMENT = "Single-letter keys (single letters)"
     
     def __init__(self):
         super().__init__()
-        self.pattern = re.compile(r'^[a-zA-Z]+$')
+        self.pattern = re.compile(r'^[a-zA-Z]$')
 
 
 class NegativeNumericDetector(KeyPatternDetector):
-    """Отрицательные числовые ключи."""
-    PRIORITY = 20
+    """Числовые ключи (отрицательные и положительные)."""
+    PRIORITY = 30
+    COMMENT = "Integers (negative and positive)"
     
     def __init__(self):
         super().__init__()
-        self.pattern = re.compile(r'^-\d+$')
+        self.pattern = re.compile(r'^-?\d+$')
+    
+    def should_convert(self, keys: Set[str]) -> bool:
+        """
+        Проверяем, что все ключи - целые числа (отрицательные или положительные).
+        """
+        # Проверяем, что хотя бы один ключ отрицательный
+        # Это важно, чтобы смешанные отрицательные/положительные числа распознавались как NegativeNumericDetector
+        has_negative = any(key.startswith('-') for key in keys)
+        has_positive = any(not key.startswith('-') and key.isdigit() for key in keys)
+        
+        # Если есть и отрицательные, и положительные, это псевдомассив
+        if has_negative and has_positive:
+            return True
+            
+        # Если только положительные, пусть NumericStringDetector обработает
+        if not has_negative and has_positive:
+            return False
+            
+        # Если только отрицательные, это псевдомассив
+        if has_negative and not has_positive:
+            return True
+            
+        return True
 
 
 class NumericStringDetector(KeyPatternDetector):
     """Обычные числовые строки (исходная функциональность)."""
-    PRIORITY = 10
+    PRIORITY = 25
+    COMMENT = "Positive integers as strings"
     
     def __init__(self):
         super().__init__()

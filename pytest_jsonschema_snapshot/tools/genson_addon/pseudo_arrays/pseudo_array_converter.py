@@ -1,6 +1,7 @@
+# [file name]: pseudo_array_converter.py
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Set, Optional
 from genson import SchemaBuilder
 from .orchestrator import KeyPatternOrchestrator
 
@@ -22,6 +23,8 @@ class PseudoArrayConverter(SchemaBuilder):
         # Храним объекты псевдо-массивов по путям
         self._pseudo_arrays: Dict[str, List[Dict[str, Any]]] = {}
         self._key_pattern_orchestrator = KeyPatternOrchestrator()
+        # Храним черные списки паттернов для каждого пути
+        self._blacklisted_patterns: Dict[str, Set[str]] = {}
 
     def add_object(self, obj: Any) -> None:
         """Добавляет объект для анализа."""
@@ -41,18 +44,40 @@ class PseudoArrayConverter(SchemaBuilder):
             # Собираем ключи для этого пути
             if path not in self._path_keys:
                 self._path_keys[path] = set()
-            self._path_keys[path].update(obj.keys())
+            current_keys = set(obj.keys())
+            self._path_keys[path].update(current_keys)
             
             # Проверяем, является ли словарь псевдо-массивом
             if len(obj) >= 3:
-                pattern_info = self._key_pattern_orchestrator.detect_pattern(set(obj.keys()))
+                # Получаем текущие черные списки для этого пути
+                blacklisted_patterns = self._blacklisted_patterns.get(path, set())
+                
+                # Проверяем паттерн с учетом черных списков
+                pattern_info, rejected_patterns = self._key_pattern_orchestrator.detect_pattern_with_rejects(
+                    current_keys, 
+                    exclude_patterns=blacklisted_patterns
+                )
+                
                 if pattern_info:
                     # Сохраняем словарь как псевдо-массив
                     if path not in self._pseudo_arrays:
                         self._pseudo_arrays[path] = []
                     self._pseudo_arrays[path].append(obj)
+                    
+                    # Добавляем отвергнутые паттерны в черный список
+                    if rejected_patterns:
+                        if path not in self._blacklisted_patterns:
+                            self._blacklisted_patterns[path] = set()
+                        self._blacklisted_patterns[path].update(rejected_patterns)
+                    
                     # Не углубляемся дальше в этот словарь
                     return
+                else:
+                    # Если паттерн не найден, добавляем все паттерны в черный список
+                    if rejected_patterns:
+                        if path not in self._blacklisted_patterns:
+                            self._blacklisted_patterns[path] = set()
+                        self._blacklisted_patterns[path].update(rejected_patterns)
             
             # Рекурсивно обходим вложенные объекты
             for key, value in obj.items():
@@ -90,21 +115,33 @@ class PseudoArrayConverter(SchemaBuilder):
             # Получаем объединенную схему элемента
             element_schema = builder.to_schema()
             
-            # Получаем паттерн ключей
+            # Получаем паттерн ключей с учетом черных списков
             keys = self._path_keys.get(path, set())
-            pattern_info = self._key_pattern_orchestrator.detect_pattern(keys)
+            blacklisted_patterns = self._blacklisted_patterns.get(path, set())
+            pattern_info, _ = self._key_pattern_orchestrator.detect_pattern_with_rejects(
+                keys, 
+                exclude_patterns=blacklisted_patterns
+            )
             
             if pattern_info:
                 # Преобразуем узел в patternProperties
                 node.clear()
-                node.update({
+                pattern_regex = pattern_info['pattern_regex']
+                result = {
                     "type": "object",
-                    "propertyNames": {"pattern": f"^{pattern_info['pattern_regex']}$"},
+                    "propertyNames": {"pattern": f"^{pattern_regex}$"},
                     "patternProperties": {
-                        f"^{pattern_info['pattern_regex']}$": element_schema
+                        f"^{pattern_regex}$": element_schema
                     },
-                    "additionalProperties": False
-                })
+                    "additionalProperties": False,
+                    "patternComment": pattern_info.get('comment', f"Detected pattern: {pattern_info['name']}")
+                }
+                
+                # Добавляем черный список паттернов в схему
+                if blacklisted_patterns:
+                    result["excludePatterns"] = sorted(list(blacklisted_patterns))
+                
+                node.update(result)
                 return
         
         # Рекурсивно обходим дочерние узлы
