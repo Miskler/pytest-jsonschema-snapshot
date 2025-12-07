@@ -4,59 +4,64 @@ from typing import Any, Dict, Set
 
 from .format_detector import FormatDetector
 
-
 class FormatAnalyzer:
     """Анализатор форматов строк в объектах."""
-
+    
     def __init__(self):
         # path -> набор форматов для этого пути
-        self._path_formats: Dict[str, Set[str]] = defaultdict(set)
+        self._path_formats: Dict[str, Set[str]] = {}
         # path -> есть ли пустые строки
-        self._path_empty: Dict[str, bool] = defaultdict(bool)
+        self._path_empty: Dict[str, bool] = {}
         # path -> есть ли строки без формата
-        self._path_no_format: Dict[str, bool] = defaultdict(bool)
-
+        self._path_no_format: Dict[str, bool] = {}
+    
     def analyze(self, obj: Any, path: str = "#") -> None:
         """Анализирует объект и собирает информацию о форматах строк."""
         if isinstance(obj, str):
             self._analyze_string(obj, path)
         elif isinstance(obj, dict):
             # Проверяем, является ли словарь псевдо-массивом
-            is_pseudo_array = obj and all(isinstance(k, str) and k.isdigit() for k in obj.keys())
-
+            is_pseudo_array = (
+                obj and 
+                all(isinstance(k, str) and k.isdigit() for k in obj.keys())
+            )
+            
             for key, value in obj.items():
                 child_path = f"{path}/{key}"
                 self.analyze(value, child_path)
-
+                
                 # Для псевдо-массивов агрегируем информацию
                 if is_pseudo_array:
-                    # Используем путь с * для всех числовых ключей
                     star_path = f"{path}/*/{key}"
-                    child_formats = self._path_formats.get(child_path, set())
-                    if child_formats:
-                        self._path_formats[star_path].update(child_formats)
-                    if self._path_empty.get(child_path):
-                        self._path_empty[star_path] = True
-                    if self._path_no_format.get(child_path):
-                        self._path_no_format[star_path] = True
-
+                    self._aggregate_path_info(child_path, star_path)
+        
         elif isinstance(obj, (list, tuple)):
             for i, item in enumerate(obj):
                 self.analyze(item, f"{path}/{i}")
-
+            
             # Агрегируем информацию об элементах массива
             if obj:
                 array_elem_path = f"{path}[]"
                 for i, item in enumerate(obj):
                     child_path = f"{path}/{i}"
-                    child_formats = self._path_formats.get(child_path, set())
-                    if child_formats:
-                        self._path_formats[array_elem_path].update(child_formats)
-                    if self._path_empty.get(child_path):
-                        self._path_empty[array_elem_path] = True
-                    if self._path_no_format.get(child_path):
-                        self._path_no_format[array_elem_path] = True
-
+                    self._aggregate_path_info(child_path, array_elem_path)
+    
+    def _aggregate_path_info(self, source_path: str, target_path: str) -> None:
+        """Агрегирует информацию о форматах из одного пути в другой."""
+        # Форматы
+        if source_path in self._path_formats:
+            if target_path not in self._path_formats:
+                self._path_formats[target_path] = set()
+            self._path_formats[target_path].update(self._path_formats[source_path])
+        
+        # Пустые строки
+        if source_path in self._path_empty and self._path_empty[source_path]:
+            self._path_empty[target_path] = True
+        
+        # Строки без формата
+        if source_path in self._path_no_format and self._path_no_format[source_path]:
+            self._path_no_format[target_path] = True
+    
     def _analyze_string(self, value: str, path: str) -> None:
         """Анализирует строку на предмет форматов."""
         if value == "":
@@ -64,18 +69,20 @@ class FormatAnalyzer:
         else:
             format_name = FormatDetector.detect(value, type_hint="string")
             if format_name:
+                if path not in self._path_formats:
+                    self._path_formats[path] = set()
                 self._path_formats[path].add(format_name)
             else:
                 self._path_no_format[path] = True
-
+    
     def get_formats(self, path: str) -> Set[str]:
         """Возвращает форматы для указанного пути."""
         return self._path_formats.get(path, set())
-
+    
     def has_empty(self, path: str) -> bool:
         """Проверяет, есть ли пустые строки на указанном пути."""
         return self._path_empty.get(path, False)
-
+    
     def has_no_format(self, path: str) -> bool:
         """Проверяет, есть ли строки без формата на указанном пути."""
         return self._path_no_format.get(path, False)

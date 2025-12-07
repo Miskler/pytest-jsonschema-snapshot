@@ -2,7 +2,7 @@
 from typing import Any
 
 from .format import FormatConverter
-from .pseudo_array_converter import PseudoArrayConverter
+from .pseudo_arrays import PseudoArrayConverter
 
 from genson import SchemaBuilder
 
@@ -42,6 +42,6 @@ class JsonToSchemaConverter(SchemaBuilder):
         schema = self._pseudo_array_converter.to_schema()
 
         # 2. Обогащаем схему форматами
-        #schema = self._format_converter.to_schema(schema)
+        schema = self._format_converter.to_schema(schema)
 
-        return schema
+        return  schema
