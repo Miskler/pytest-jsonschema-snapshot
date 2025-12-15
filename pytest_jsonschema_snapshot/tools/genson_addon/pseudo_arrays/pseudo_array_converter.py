@@ -1,9 +1,10 @@
 # [file name]: pseudo_array_converter.py
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set, Optional
+from typing import Any, Dict, List, Set
 from genson import SchemaBuilder
 from .orchestrator import KeyPatternOrchestrator
+from ..string import CustomString
 
 
 class PseudoArrayConverter(SchemaBuilder):
@@ -12,12 +13,13 @@ class PseudoArrayConverter(SchemaBuilder):
     """
     
     MAX_DEPTH = 1000  # Ограничение глубины рекурсии
+    EXTRA_STRATEGIES = (CustomString,) # к сожалению эта шляпа полностью статична, иначе не работает
 
     def __init__(
         self,
         schema_uri: str = "https://json-schema.org/draft/2020-12/schema",
     ) -> None:
-        super().__init__()
+        super().__init__(schema_uri=schema_uri)
         # Храним ТОЛЬКО ключи по путям (никаких значений!)
         self._path_keys: Dict[str, Set[str]] = {}
         # Храним объекты псевдо-массивов по путям

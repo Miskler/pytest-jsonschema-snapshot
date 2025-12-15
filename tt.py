@@ -138,11 +138,10 @@ SAMPLE_DATA = {
     "2024-01-01": {"type": "date"}
   },
   
-  "metadata": {
-    "created": "2024-01-15T10:00:00Z",
-    "version": "1.0.0",
-    "author": "system"
-  }
+  "metadata": [
+      "yes",
+      ""
+  ]
 }
 
 
