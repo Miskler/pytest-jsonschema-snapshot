@@ -1,11 +1,8 @@
 # src/jsonschema_infer/to_schema_converter.py
-from typing import Any
+from typing import Any, Dict
 
 from .pseudo_arrays import PseudoArrayConverter  # Assuming this is the file name for the provided code
 from genson import SchemaBuilder
-from genson.schema.strategies import String, BASIC_SCHEMA_STRATEGIES
-from genson.schema.node import SchemaNode  # Import SchemaNode for dynamic type creation
-from .string import CustomString  # Import the custom class
 
 class JsonToSchemaConverter(SchemaBuilder):
     """Main converter combining pseudo-array functionality with integrated format handling in custom string strategy."""
@@ -19,7 +16,6 @@ class JsonToSchemaConverter(SchemaBuilder):
         """
         self.format_mode = format_mode
         self._pseudo_array_converter = PseudoArrayConverter()
-        super().__init__()
 
     def add_object(self, obj: Any) -> None:
         """
@@ -30,6 +26,16 @@ class JsonToSchemaConverter(SchemaBuilder):
         """
         # Only add to pseudo-array converter (it handles addition internally with now-custom node strategies)
         self._pseudo_array_converter.add_object(obj)
+
+    def add_schema(self, schema: Dict[str, Any]) -> None:
+        """
+        Adds a schema for merging.
+
+        Args:
+            schema: JSON schema to merge.
+        """
+        # Redirect to pseudo-array converter to ensure consistent merging with pseudo-array and format handling
+        self._pseudo_array_converter.add_schema(schema)
 
     def to_schema(self) -> dict[str, Any]:
         """

@@ -90,7 +90,7 @@ class NegativeNumericDetector(KeyPatternDetector):
 
 class NumericStringDetector(KeyPatternDetector):
     """Обычные числовые строки (исходная функциональность)."""
-    PRIORITY = 25
+    PRIORITY = 32
     COMMENT = "Positive integers as strings"
     
     def __init__(self):

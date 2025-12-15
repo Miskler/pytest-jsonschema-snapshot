@@ -4,8 +4,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Set
 from genson import SchemaBuilder
 from .orchestrator import KeyPatternOrchestrator
-from ..string import CustomString
-
+from ..string import CustomString  # Import the custom class
+from ..object import CustomObject  # Import the new custom object class
 
 class PseudoArrayConverter(SchemaBuilder):
     """
@@ -13,7 +13,7 @@ class PseudoArrayConverter(SchemaBuilder):
     """
     
     MAX_DEPTH = 1000  # Ограничение глубины рекурсии
-    EXTRA_STRATEGIES = (CustomString,) # к сожалению эта шляпа полностью статична, иначе не работает
+    EXTRA_STRATEGIES = (CustomString, CustomObject) # к сожалению эта шляпа полностью статична, иначе не работает
 
     def __init__(
         self,
