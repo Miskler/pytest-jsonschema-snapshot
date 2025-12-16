@@ -1,5 +1,6 @@
 import json
-from pytest_jsonschema_snapshot.tools.genson_addon import JsonToSchemaConverter
+from pytest_jsonschema_snapshot.tools.genson_addon.pseudo_arrays import PseudoArrayConverter
+from pprint import pprint
 
 def print_schema(title: str, schema: dict) -> None:
     print("\n" + "=" * 80)
@@ -10,9 +11,31 @@ def print_schema(title: str, schema: dict) -> None:
 
 # Helper to generate a schema from a single object
 def generate_single_schema(obj: dict, format_mode: str = "on") -> dict:
-    converter = JsonToSchemaConverter(format_mode=format_mode)
+    converter = PseudoArrayConverter()
     converter.add_object(obj)
     return converter.to_schema()
+
+
+
+obj1_pseudo = {"pseudo": {}}  # Псевдомассив
+obj2_pseudo = {"pseudo": {"4": "val1", "1": "val2", "2": "val3"}}#{"pseudo": {"2023-10-05": "val4", "2025-10-05": "val5", "2024-10-05": "val6"}}  # Аналогичный
+
+schema1_pseudo = generate_single_schema(obj1_pseudo)
+pprint(schema1_pseudo)
+schema2_pseudo = generate_single_schema(obj2_pseudo)
+pprint(schema2_pseudo)
+
+converter_pseudo = PseudoArrayConverter()
+converter_pseudo.add_schema(schema1_pseudo)
+converter_pseudo.add_schema(schema2_pseudo)
+merged_pseudo = converter_pseudo.to_schema()
+pprint(merged_pseudo)
+breakpoint()
+
+
+
+
+
 
 # Сценарий 1: Форматы у обоих — объединяем в oneOf (демонстрация через генерацию и merge схем)
 obj1_sc1 = {"field": "user@example.com"}  # Формат: email

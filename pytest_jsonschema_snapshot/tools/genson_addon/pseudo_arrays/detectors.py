@@ -1,3 +1,4 @@
+# src/jsonschema_infer/detectors.py
 import re
 from .base import KeyPatternDetector
 from typing import Set
@@ -7,6 +8,10 @@ class UUIDKeyDetector(KeyPatternDetector):
     """UUID ключи: 550e8400-e29b-41d4-a716-446655440000"""
     PRIORITY = 70
     COMMENT = "UUID keys in the standard format"
+    examples = [
+        "550e8400-e29b-41d4-a716-446655440000",
+        "123e4567-e89b-12d3-a456-426614174000"
+    ]
     
     def __init__(self):
         super().__init__()
@@ -19,6 +24,11 @@ class ISODateTimeDetector(KeyPatternDetector):
     """ISO даты и время."""
     PRIORITY = 60
     COMMENT = "Datetime in ISO format"
+    examples = [
+        "2023-10-05",
+        "2023-10-05T12:34:56Z",
+        "2023-10-05T12:34:56+00:00"
+    ]
     
     def __init__(self):
         super().__init__()
@@ -29,6 +39,12 @@ class ISOCodeDetector(KeyPatternDetector):
     """ISO коды стран (2-3 буквы) или языков (en-US)."""
     PRIORITY = 50
     COMMENT = "ISO country codes (2-3 letters) and languages"
+    examples = [
+        "US",
+        "USA",
+        "en-US",
+        "fr-FR"
+    ]
     
     def __init__(self):
         super().__init__()
@@ -39,6 +55,11 @@ class HexKeyDetector(KeyPatternDetector):
     """16-ричные ключи: 0x1a3f, 0xFF."""
     PRIORITY = 40
     COMMENT = "16-digit numbers with the prefix 0x"
+    examples = [
+        "0x1a3f",
+        "0xFF",
+        "0xabcdef"
+    ]
     
     def __init__(self):
         super().__init__()
@@ -49,6 +70,11 @@ class SingleLetterDetector(KeyPatternDetector):
     """Однобуквенные ключи: a, b, c."""
     PRIORITY = 35
     COMMENT = "Single-letter keys (single letters)"
+    examples = [
+        "a",
+        "b",
+        "C"
+    ]
     
     def __init__(self):
         super().__init__()
@@ -59,6 +85,13 @@ class NegativeNumericDetector(KeyPatternDetector):
     """Числовые ключи (отрицательные и положительные)."""
     PRIORITY = 30
     COMMENT = "Integers (negative and positive)"
+    examples = [
+        "-1",
+        "0",
+        "1",
+        "10",
+        "-100"
+    ]
     
     def __init__(self):
         super().__init__()
@@ -92,6 +125,12 @@ class NumericStringDetector(KeyPatternDetector):
     """Обычные числовые строки (исходная функциональность)."""
     PRIORITY = 32
     COMMENT = "Positive integers as strings"
+    examples = [
+        "0",
+        "1",
+        "10",
+        "100"
+    ]
     
     def __init__(self):
         super().__init__()
