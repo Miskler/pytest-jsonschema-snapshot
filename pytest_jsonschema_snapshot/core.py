@@ -13,18 +13,17 @@ if TYPE_CHECKING:
     from jsonschema_diff import JsonSchemaDiff
 
 import pytest
+from genschema import Converter, PseudoArrayHandler
+from genschema.comparators import (
+    DeleteElement,
+    FormatComparator,
+    RequiredComparator,
+    SchemaVersionComparator,
+)
 from jsonschema import FormatChecker, ValidationError, validate
 
 from .stats import GLOBAL_STATS
 from .tools import NameMaker
-from genschema import Converter, PseudoArrayHandler
-from genschema.comparators import (
-    FormatComparator,
-    RequiredComparator,
-    EmptyComparator,
-    DeleteElement,
-    SchemaVersionComparator
-)
 
 
 class SchemaShot:
@@ -68,7 +67,7 @@ class SchemaShot:
         )
         self.conv.register(FormatComparator())
         self.conv.register(RequiredComparator())
-        #self.conv.register(EmptyComparator())
+        # self.conv.register(EmptyComparator())
         self.conv.register(SchemaVersionComparator())
         self.conv.register(DeleteElement())
         self.conv.register(DeleteElement("isPseudoArray"))
