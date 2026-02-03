@@ -27,7 +27,7 @@ classifiers = [
   "Topic :: Utilities"
 ]
 dependencies = [
-  "genson",
+  "genschema",
   "pathvalidate",
   "jsonschema",
   "jsonschema-diff",

@@ -16,7 +16,14 @@ import pytest
 from jsonschema import FormatChecker, ValidationError, validate
 
 from .stats import GLOBAL_STATS
-from .tools import JsonToSchemaConverter, NameMaker
+from .tools import NameMaker
+from genschema import Converter, PseudoArrayHandler
+from genschema.comparators import (
+    FormatComparator,
+    RequiredComparator,
+    EmptyComparator,
+    DeleteElement,
+)
 
 
 class SchemaShot:
@@ -53,6 +60,16 @@ class SchemaShot:
         self.debug_mode: bool = debug_mode
         self.snapshot_dir: Path = root_dir / snapshot_dir_name
         self.used_schemas: Set[str] = set()
+
+        self.conv = Converter(
+            pseudo_handler=PseudoArrayHandler(),
+            base_of="anyOf",
+        )
+        self.conv.register(FormatComparator())
+        self.conv.register(RequiredComparator())
+        self.conv.register(EmptyComparator())
+        self.conv.register(DeleteElement())
+        self.conv.register(DeleteElement("isPseudoArray"))
 
         self.logger = logging.getLogger(__name__)
         # добавляем вывод в stderr
@@ -144,11 +161,11 @@ class SchemaShot:
 
         real_name = self._process_name(name)
 
-        builder = JsonToSchemaConverter(
-            format_mode=self.format_mode
-        )  # , examples=self.examples_limit)
-        builder.add_object(data)
-        current_schema = builder.to_schema()
+        self.conv.add_schema(data)
+        current_schema = self.conv.run()
+        self.conv._id = 0 # TODO сделать отдельным методом
+        self.conv._jsons = []
+        self.conv._schemas = []
 
         real_name, status = self._base_match(data, current_schema, real_name)
 
@@ -234,12 +251,13 @@ class SchemaShot:
             schema_updated = False
 
             def merge_schemas(old: dict, new: dict) -> dict:
-                builder = JsonToSchemaConverter(
-                    format_mode=self.format_mode
-                )  # , examples=self.examples_limit)
-                builder.add_schema(old)
-                builder.add_schema(new)
-                return builder.to_schema()
+                self.conv.add_schema(old)
+                self.conv.add_schema(new)
+                result = self.conv.run()
+                self.conv._id = 0 # TODO сделать отдельным методом
+                self.conv._jsons = []
+                self.conv._schemas = []
+                return result
 
             if existing_schema != current_schema:  # есть отличия
                 if (self.update_mode or self.reset_mode) and self.update_actions.get("update"):
