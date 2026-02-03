@@ -1,18 +1,18 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "properties": {
-    "user_email": {
-      "type": "string",
-      "format": "email"
-    },
-    "admin_email": {
-      "type": "string",
-      "format": "email"
-    }
-  },
   "required": [
     "admin_email",
     "user_email"
-  ]
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "admin_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "user_email": {
+      "type": "string",
+      "format": "email"
+    }
+  }
 }

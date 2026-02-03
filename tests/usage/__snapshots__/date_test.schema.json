@@ -1,6 +1,10 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "required": [
+    "birth_date",
+    "registration_date"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "birth_date": {
       "type": "string",
@@ -10,9 +14,5 @@
       "type": "string",
       "format": "date"
     }
-  },
-  "required": [
-    "birth_date",
-    "registration_date"
-  ]
+  }
 }

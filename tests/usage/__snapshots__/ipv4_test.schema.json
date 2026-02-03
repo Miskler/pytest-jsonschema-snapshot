@@ -1,18 +1,18 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "properties": {
-    "server_ip": {
-      "type": "string",
-      "format": "ipv4"
-    },
-    "gateway": {
-      "type": "string",
-      "format": "ipv4"
-    }
-  },
   "required": [
     "gateway",
     "server_ip"
-  ]
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "gateway": {
+      "type": "string",
+      "format": "ipv4"
+    },
+    "server_ip": {
+      "type": "string",
+      "format": "ipv4"
+    }
+  }
 }

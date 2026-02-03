@@ -1,20 +1,20 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "required": [
+    "description",
+    "name",
+    "status"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "name": {
+    "description": {
       "type": "string"
     },
-    "description": {
+    "name": {
       "type": "string"
     },
     "status": {
       "type": "string"
     }
-  },
-  "required": [
-    "description",
-    "name",
-    "status"
-  ]
+  }
 }

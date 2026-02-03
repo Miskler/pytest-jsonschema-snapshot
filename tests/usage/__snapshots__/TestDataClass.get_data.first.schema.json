@@ -1,15 +1,24 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "required": [
+    "необязательная",
+    "обязательная",
+    "словарь"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "обязательная": {
-      "type": "string"
-    },
     "необязательная": {
       "type": "null"
     },
+    "обязательная": {
+      "type": "string"
+    },
     "словарь": {
       "type": "object",
+      "required": [
+        "ключ",
+        "число"
+      ],
       "properties": {
         "ключ": {
           "type": "string"
@@ -17,16 +26,7 @@
         "число": {
           "type": "integer"
         }
-      },
-      "required": [
-        "ключ",
-        "число"
-      ]
+      }
     }
-  },
-  "required": [
-    "необязательная",
-    "обязательная",
-    "словарь"
-  ]
+  }
 }

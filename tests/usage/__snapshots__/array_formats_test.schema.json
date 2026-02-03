@@ -1,19 +1,24 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "required": [
+    "dates",
+    "emails",
+    "uuids"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "emails": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "format": "email"
-      }
-    },
     "dates": {
       "type": "array",
       "items": {
         "type": "string",
         "format": "date"
+      }
+    },
+    "emails": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "email"
       }
     },
     "uuids": {
@@ -23,10 +28,5 @@
         "format": "uuid"
       }
     }
-  },
-  "required": [
-    "dates",
-    "emails",
-    "uuids"
-  ]
+  }
 }

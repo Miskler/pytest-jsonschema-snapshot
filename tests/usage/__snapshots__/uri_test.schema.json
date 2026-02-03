@@ -1,18 +1,18 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "properties": {
-    "website": {
-      "type": "string",
-      "format": "uri"
-    },
-    "api_endpoint": {
-      "type": "string",
-      "format": "uri"
-    }
-  },
   "required": [
     "api_endpoint",
     "website"
-  ]
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "api_endpoint": {
+      "type": "string",
+      "format": "uri"
+    },
+    "website": {
+      "type": "string",
+      "format": "uri"
+    }
+  }
 }

@@ -23,6 +23,7 @@ from genschema.comparators import (
     RequiredComparator,
     EmptyComparator,
     DeleteElement,
+    SchemaVersionComparator
 )
 
 
@@ -67,7 +68,8 @@ class SchemaShot:
         )
         self.conv.register(FormatComparator())
         self.conv.register(RequiredComparator())
-        self.conv.register(EmptyComparator())
+        #self.conv.register(EmptyComparator())
+        self.conv.register(SchemaVersionComparator())
         self.conv.register(DeleteElement())
         self.conv.register(DeleteElement("isPseudoArray"))
 
@@ -161,11 +163,9 @@ class SchemaShot:
 
         real_name = self._process_name(name)
 
+        self.conv.clear_data()
         self.conv.add_schema(data)
         current_schema = self.conv.run()
-        self.conv._id = 0 # TODO сделать отдельным методом
-        self.conv._jsons = []
-        self.conv._schemas = []
 
         real_name, status = self._base_match(data, current_schema, real_name)
 
@@ -251,12 +251,10 @@ class SchemaShot:
             schema_updated = False
 
             def merge_schemas(old: dict, new: dict) -> dict:
+                self.conv.clear_data()
                 self.conv.add_schema(old)
                 self.conv.add_schema(new)
                 result = self.conv.run()
-                self.conv._id = 0 # TODO сделать отдельным методом
-                self.conv._jsons = []
-                self.conv._schemas = []
                 return result
 
             if existing_schema != current_schema:  # есть отличия

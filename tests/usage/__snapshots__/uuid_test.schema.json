@@ -1,6 +1,10 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "required": [
+    "id",
+    "session_id"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "id": {
       "type": "string",
@@ -10,9 +14,5 @@
       "type": "string",
       "format": "uuid"
     }
-  },
-  "required": [
-    "id",
-    "session_id"
-  ]
+  }
 }

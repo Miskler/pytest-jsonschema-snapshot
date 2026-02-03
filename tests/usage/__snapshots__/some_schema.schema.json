@@ -1,58 +1,26 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "required": [
+    "необязательная",
+    "обязательная",
+    "разнотипный_массив",
+    "словарь",
+    "сложная_структура"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "обязательная": {
-      "type": "string"
-    },
     "необязательная": {
       "type": "null"
     },
+    "обязательная": {
+      "type": "string"
+    },
+    "разнотипный_массив": {
+      "type": "array",
+      "items": {}
+    },
     "словарь": {
       "type": "object",
-      "properties": {
-        "ключ": {
-          "type": "string"
-        },
-        "число": {
-          "type": "integer"
-        },
-        "булево": {
-          "type": "boolean"
-        },
-        "список": {
-          "type": "array",
-          "items": {
-            "type": "integer"
-          }
-        },
-        "вложенный_словарь": {
-          "type": "object",
-          "properties": {
-            "пустое": {
-              "type": "null"
-            }
-          },
-          "required": [
-            "пустое"
-          ]
-        },
-        "пустой_словарь": {
-          "type": "object"
-        },
-        "пустой_список": {
-          "type": "array"
-        },
-        "пустое_значение": {
-          "type": "string"
-        },
-        "пустое_число": {
-          "type": "integer"
-        },
-        "дополнительное_поле": {
-          "type": "string"
-        }
-      },
       "required": [
         "булево",
         "вложенный_словарь",
@@ -64,32 +32,79 @@
         "пустой_список",
         "список",
         "число"
-      ]
+      ],
+      "properties": {
+        "булево": {
+          "type": "boolean"
+        },
+        "вложенный_словарь": {
+          "type": "object",
+          "required": [
+            "пустое"
+          ],
+          "properties": {
+            "пустое": {
+              "type": "null"
+            }
+          }
+        },
+        "дополнительное_поле": {
+          "type": "string"
+        },
+        "ключ": {
+          "type": "string"
+        },
+        "пустое_значение": {
+          "type": "string"
+        },
+        "пустое_число": {
+          "type": "integer"
+        },
+        "пустой_словарь": {
+          "type": "object"
+        },
+        "пустой_список": {
+          "type": "array",
+          "items": {}
+        },
+        "список": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "число": {
+          "type": "integer"
+        }
+      }
     },
     "сложная_структура": {
       "type": "array",
       "items": {
         "type": "object",
+        "required": [
+          "id",
+          "вложенный_объект",
+          "возраст",
+          "имя"
+        ],
         "properties": {
           "id": {
             "type": "integer"
           },
-          "имя": {
-            "anyOf": [
-              {
+          "вложенный_объект": {
+            "type": "object",
+            "required": [
+              "ключ"
+            ],
+            "properties": {
+              "ключ": {
                 "type": "string"
               },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
+              "лишний_ключ": {
+                "type": "null"
               }
-            ]
-          },
-          "почта": {
-            "type": "string",
-            "format": "email"
+            }
           },
           "возраст": {
             "type": "number"
@@ -98,59 +113,13 @@
             "type": "string",
             "format": "date-time"
           },
-          "вложенный_объект": {
-            "type": "object",
-            "properties": {
-              "ключ": {
-                "type": "string"
-              },
-              "лишний_ключ": {
-                "type": "null"
-              }
-            },
-            "required": [
-              "ключ"
-            ]
+          "имя": {},
+          "почта": {
+            "type": "string",
+            "format": "email"
           }
-        },
-        "required": [
-          "id",
-          "вложенный_объект",
-          "возраст",
-          "имя"
-        ]
-      }
-    },
-    "разнотипный_массив": {
-      "type": "array",
-      "items": {
-        "anyOf": [
-          {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "ключ": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "ключ"
-            ]
-          }
-        ]
+        }
       }
     }
-  },
-  "required": [
-    "необязательная",
-    "обязательная",
-    "разнотипный_массив",
-    "словарь",
-    "сложная_структура"
-  ]
+  }
 }
