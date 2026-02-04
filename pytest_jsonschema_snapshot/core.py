@@ -5,7 +5,7 @@ Core logic of the plugin.
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable, Optional, Literal
 
 import pathvalidate
 
@@ -59,7 +59,7 @@ class SchemaShot:
         self.save_original: bool = save_original
         self.debug_mode: bool = debug_mode
         self.snapshot_dir: Path = root_dir / snapshot_dir_name
-        self.used_schemas: Set[str] = set()
+        self.used_schemas: set[str] = set()
 
         self.conv = Converter(
             pseudo_handler=PseudoArrayHandler(),
@@ -162,11 +162,7 @@ class SchemaShot:
 
         real_name = self._process_name(name)
 
-        self.conv.clear_data()
-        self.conv.add_schema(data)
-        current_schema = self.conv.run()
-
-        real_name, status = self._base_match(data, current_schema, real_name)
+        real_name, status = self._base_match(data, data, "json", real_name)
 
         if self.update_mode or self.reset_mode:
             self._save_process_original(real_name=real_name, status=status, data=data)
@@ -191,7 +187,7 @@ class SchemaShot:
 
         real_name = self._process_name(name)
 
-        real_name, status = self._base_match(data, schema, real_name)
+        real_name, status = self._base_match(data, schema, "schema", real_name)
 
         if self.update_mode and data is not None:
             self._save_process_original(real_name=real_name, status=status, data=data)
@@ -201,7 +197,8 @@ class SchemaShot:
     def _base_match(
         self,
         data: Optional[dict],
-        current_schema: dict,
+        current_data: dict,
+        type_data: Literal["json", "schema"],
         name: str,
     ) -> tuple[str, Optional[bool]]:
         """
@@ -236,6 +233,15 @@ class SchemaShot:
                     f"Schema `{name}` not found and adding new schemas is disabled."
                 )
 
+            if type_data == "json":
+                self.conv.clear_data()
+                self.conv.add_schema(current_data)
+                current_schema = self.conv.run()
+            elif type_data == "schema":
+                current_schema = current_data
+            else:
+                raise ValueError("Not correct type argument")
+
             with open(schema_path, "w", encoding="utf-8") as f:
                 json.dump(current_schema, f, indent=2, ensure_ascii=False)
 
@@ -249,10 +255,15 @@ class SchemaShot:
             # --- схема уже была: сравнение и валидация --------------------------------
             schema_updated = False
 
-            def merge_schemas(old: dict, new: dict) -> dict:
+            def merge_schemas(old: dict, new: dict, type_data: Literal["json", "schema"]) -> dict:
                 self.conv.clear_data()
                 self.conv.add_schema(old)
-                self.conv.add_schema(new)
+                if type_data == "schema":
+                    self.conv.add_schema(new)
+                elif type_data == "json":
+                    self.conv.add_json(new)
+                else:
+                    raise ValueError("Not correct type argument")
                 result = self.conv.run()
                 return result
 
@@ -261,7 +272,7 @@ class SchemaShot:
                     # обновляем файл
                     if self.reset_mode and not self.update_mode:
                         differences = self.differ.compare(
-                            dict(existing_schema), current_schema
+                            dict(existing_schema), current_data, type_data
                         ).render()
                         GLOBAL_STATS.add_updated(schema_path.name, differences)
 
