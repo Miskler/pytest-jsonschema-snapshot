@@ -17,7 +17,27 @@
     },
     "разнотипный_массив": {
       "type": "array",
-      "items": {}
+      "items": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "required": [
+              "ключ"
+            ],
+            "properties": {
+              "ключ": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
     },
     "словарь": {
       "type": "object",
@@ -113,7 +133,19 @@
             "type": "string",
             "format": "date-time"
           },
-          "имя": {},
+          "имя": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
           "почта": {
             "type": "string",
             "format": "email"
