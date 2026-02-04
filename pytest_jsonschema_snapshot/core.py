@@ -5,7 +5,7 @@ Core logic of the plugin.
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal, Optional
 
 import pathvalidate
 
@@ -221,6 +221,16 @@ class SchemaShot:
         # --- состояние ДО проверки ---
         schema_exists_before = schema_path.exists()
 
+        def make_schema(value: dict | list, type: Literal["json", "schema"]) -> dict:
+            if type_data == "schema":
+                return current_data
+            elif type_data == "json":
+                self.conv.clear_data()
+                self.conv.add_json(current_data)
+                return self.conv.run()
+            else:
+                raise ValueError("Not correct type argument")
+
         # --- когда схемы ещё нет ---
         if not schema_exists_before:
             if not self.update_mode and not self.reset_mode:
@@ -233,14 +243,7 @@ class SchemaShot:
                     f"Schema `{name}` not found and adding new schemas is disabled."
                 )
 
-            if type_data == "json":
-                self.conv.clear_data()
-                self.conv.add_schema(current_data)
-                current_schema = self.conv.run()
-            elif type_data == "schema":
-                current_schema = current_data
-            else:
-                raise ValueError("Not correct type argument")
+            current_schema = make_schema(current_data, type_data)
 
             with open(schema_path, "w", encoding="utf-8") as f:
                 json.dump(current_schema, f, indent=2, ensure_ascii=False)
@@ -255,11 +258,13 @@ class SchemaShot:
             # --- схема уже была: сравнение и валидация --------------------------------
             schema_updated = False
 
-            def merge_schemas(old: dict, new: dict, type_data: Literal["json", "schema"]) -> dict:
+            def merge_schemas(
+                old: dict, new: dict | list, type_data: Literal["json", "schema"]
+            ) -> dict:
                 self.conv.clear_data()
                 self.conv.add_schema(old)
                 if type_data == "schema":
-                    self.conv.add_schema(new)
+                    self.conv.add_schema(dict(new))
                 elif type_data == "json":
                     self.conv.add_json(new)
                 else:
@@ -267,37 +272,45 @@ class SchemaShot:
                 result = self.conv.run()
                 return result
 
-            if existing_schema != current_schema:  # есть отличия
+            if (
+                type_data == "json" or existing_schema != current_data
+            ):  # есть отличия или могут быть
                 if (self.update_mode or self.reset_mode) and self.update_actions.get("update"):
                     # обновляем файл
                     if self.reset_mode and not self.update_mode:
-                        differences = self.differ.compare(
-                            dict(existing_schema), current_data, type_data
-                        ).render()
-                        GLOBAL_STATS.add_updated(schema_path.name, differences)
+                        current_schema = make_schema(current_data, type_data)
 
-                        with open(schema_path, "w", encoding="utf-8") as f:
-                            json.dump(current_schema, f, indent=2, ensure_ascii=False)
-                        self.logger.warning(f"Schema `{name}` updated (reset).\n\n{differences}")
+                        differences = self.differ.compare(
+                            dict(existing_schema), current_schema
+                        ).render()
+                        diff_count = self.differ.property.calc_diff()
+                        if any(diff_count[key] > 0 for key in diff_count if key != "UNKNOWN"):
+                            GLOBAL_STATS.add_updated(schema_path.name, differences)
+
+                            with open(schema_path, "w", encoding="utf-8") as f:
+                                json.dump(current_schema, f, indent=2, ensure_ascii=False)
+                            self.logger.warning(f"Schema `{name}` reseted.\n\n{differences}")
                     elif self.update_mode and not self.reset_mode:
-                        merged_schema = merge_schemas(existing_schema, current_schema)
+                        merged_schema = merge_schemas(existing_schema, current_data, type_data)
 
                         differences = self.differ.compare(
                             dict(existing_schema), merged_schema
                         ).render()
-                        GLOBAL_STATS.add_updated(schema_path.name, differences)
+                        diff_count = self.differ.property.calc_diff()
+                        if any(diff_count[key] > 0 for key in diff_count if key != "UNKNOWN"):
+                            GLOBAL_STATS.add_updated(schema_path.name, differences)
 
-                        with open(schema_path, "w", encoding="utf-8") as f:
-                            json.dump(merged_schema, f, indent=2, ensure_ascii=False)
+                            with open(schema_path, "w", encoding="utf-8") as f:
+                                json.dump(merged_schema, f, indent=2, ensure_ascii=False)
 
-                        self.logger.warning(f"Schema `{name}` updated (update).\n\n{differences}")
+                            self.logger.warning(f"Schema `{name}` updated.\n\n{differences}")
                     else:  # both update_mode and reset_mode are True
                         raise ValueError(
                             "Both update_mode and reset_mode cannot be True at the same time."
                         )
                     schema_updated = True
                 elif data is not None:
-                    merged_schema = merge_schemas(existing_schema, current_schema)
+                    merged_schema = merge_schemas(existing_schema, current_data, type_data)
 
                     differences = self.differ.compare(dict(existing_schema), merged_schema).render()
                     GLOBAL_STATS.add_uncommitted(schema_path.name, differences)
@@ -313,7 +326,7 @@ class SchemaShot:
                         pytest.fail(
                             f"\n\n{differences}\n\nValidation error in `{name}`: {e.message}"
                         )
-            elif data is not None:
+            elif data is not None and type_data == "schema":
                 # схемы совпали – всё равно валидируем на случай формальных ошибок
                 try:
                     validate(
@@ -322,7 +335,7 @@ class SchemaShot:
                         format_checker=FormatChecker(),
                     )
                 except ValidationError as e:
-                    merged_schema = merge_schemas(existing_schema, current_schema)
+                    merged_schema = merge_schemas(existing_schema, current_data, type_data)
 
                     differences = self.differ.compare(dict(existing_schema), merged_schema).render()
                     pytest.fail(f"\n\n{differences}\n\nValidation error in `{name}`: {e.message}")
