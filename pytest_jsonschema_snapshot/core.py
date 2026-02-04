@@ -35,7 +35,7 @@ class SchemaShot:
         format_mode: str = "on",
         update_mode: bool = False,
         reset_mode: bool = False,
-        update_actions: dict[str, bool] = {},
+        update_actions: Optional[dict[str, bool]] = {},
         save_original: bool = False,
         debug_mode: bool = False,
         snapshot_dir_name: str = "__snapshots__",
@@ -55,7 +55,7 @@ class SchemaShot:
         # self.examples_limit: int = examples_limit
         self.update_mode: bool = update_mode
         self.reset_mode: bool = reset_mode
-        self.update_actions: dict[str, bool] = update_actions
+        self.update_actions: dict[str, bool] = dict(update_actions or {})
         self.save_original: bool = save_original
         self.debug_mode: bool = debug_mode
         self.snapshot_dir: Path = root_dir / snapshot_dir_name
@@ -116,7 +116,7 @@ class SchemaShot:
             pathvalidate.validate_filename(
                 name, platform="auto"
             )  # allow_reserved=False по умолчанию
-        except ValidationError as e:
+        except pathvalidate.ValidationError as e:
             raise ValueError(f"Invalid schema name: {e}") from None
 
         return name
@@ -221,7 +221,7 @@ class SchemaShot:
         # --- состояние ДО проверки ---
         schema_exists_before = schema_path.exists()
 
-        def make_schema(value: dict | list, type: Literal["json", "schema"]) -> dict:
+        def make_schema(current_data: dict | list, type_data: Literal["json", "schema"]) -> dict:
             if type_data == "schema":
                 return current_data
             elif type_data == "json":
