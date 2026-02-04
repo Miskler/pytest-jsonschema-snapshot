@@ -223,7 +223,7 @@ class SchemaShot:
 
         def make_schema(current_data: dict | list, type_data: Literal["json", "schema"]) -> dict:
             if type_data == "schema":
-                return current_data
+                return dict(current_data)
             elif type_data == "json":
                 self.conv.clear_data()
                 self.conv.add_json(current_data)
