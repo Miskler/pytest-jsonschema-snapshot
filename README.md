@@ -79,6 +79,7 @@ pip install pytest-jsonschema-snapshot
    ```
 
    **--save-original**: save the original data on which the validation was performed. Saving occurs when `--schema-update` or `--schema-reset`, if you run the schema update without this attribute, the old original data will be deleted without saving new ones.
+   **--jsss-ci-cd**: CI mode is intended for automatic PR generation; it saves updates (like `--schema-update`) to `__snapshots__/ci.cd/` (`--save-original` is compatible).
 
 3. On subsequent runs, tests will validate data against saved schemas
    ```bash

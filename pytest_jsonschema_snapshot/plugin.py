@@ -43,6 +43,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store_true",
         help="Show internal exception stack (stops hiding them)",
     )
+    parser.addoption(
+        "--jsss-ci-cd",
+        action="store_true",
+        help="CI/CD mode is incompatible with --schema-reset and --schema-update and implies:\n"
+        "When a schema mismatch occurs, "
+        "schemas are created in __snapshots__/ci.cd/*.schema.json / *.json "
+        "(when --save-original is used)",
+    )
 
     parser.addoption(
         "--without-delete",
@@ -87,10 +95,25 @@ def schemashot(request: pytest.FixtureRequest) -> Generator[SchemaShot, None, No
     test_path = Path(request.node.path if hasattr(request.node, "path") else request.node.fspath)
     root_dir = test_path.parent
 
-    update_mode = bool(request.config.getoption("--schema-update"))
-    reset_mode = bool(request.config.getoption("--schema-reset"))
-    if update_mode and reset_mode:
-        raise ValueError("Options --schema-update and --schema-reset are mutually exclusive.")
+    # Автополучение значения и валидация
+    update_mode: str | bool = "--schema-update"
+    reset_mode: str | bool = "--schema-reset"
+    ci_cd_mode: str | bool = "--jsss-ci-cd"
+
+    modes = [update_mode, reset_mode, ci_cd_mode]
+    states: list[bool] = []
+    enabled = []
+
+    for mode in modes:
+        state = bool(request.config.getoption(str(mode)))
+        states.append(state)
+        if state:
+            enabled.append(str(mode))
+
+    update_mode, reset_mode, ci_cd_mode = states
+
+    if len(enabled) > 1:
+        raise ValueError(f"Options {' and '.join(enabled)} are mutually exclusive.")
 
     save_original = bool(request.config.getoption("--save-original"))
     debug_mode = bool(request.config.getoption("--jsss-debug"))
@@ -117,17 +140,18 @@ def schemashot(request: pytest.FixtureRequest) -> Generator[SchemaShot, None, No
     # Создаем или получаем экземпляр SchemaShot для этой директории
     if root_dir not in _schema_managers:
         _schema_managers[root_dir] = SchemaShot(
-            root_dir,
-            differ,
-            callable_regex,
-            format_mode,
+            root_dir=root_dir,
+            differ=differ,
+            callable_regex=callable_regex,
+            format_mode=format_mode,
             # examples_limit,
-            update_mode,
-            reset_mode,
-            actions,
-            save_original,
-            debug_mode,
-            schema_dir_name,
+            update_mode=bool(update_mode),
+            reset_mode=bool(reset_mode),
+            ci_cd_mode=bool(ci_cd_mode),
+            update_actions=actions,
+            save_original=save_original,
+            debug_mode=debug_mode,
+            snapshot_dir_name=schema_dir_name,
         )
 
     # Создаем локальный экземпляр для теста

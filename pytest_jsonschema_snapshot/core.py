@@ -4,6 +4,7 @@ Core logic of the plugin.
 
 import json
 import logging
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Literal, Optional
 
@@ -34,6 +35,7 @@ class SchemaShot:
         callable_regex: str = "{class_method=.}",
         format_mode: str = "on",
         update_mode: bool = False,
+        ci_cd_mode: bool = False,
         reset_mode: bool = False,
         update_actions: Optional[dict[str, bool]] = {},
         save_original: bool = False,
@@ -52,6 +54,7 @@ class SchemaShot:
         self.differ: "JsonSchemaDiff" = differ
         self.callable_regex: str = callable_regex
         self.format_mode: str = format_mode
+        self.ci_cd_mode: bool = ci_cd_mode
         # self.examples_limit: int = examples_limit
         self.update_mode: bool = update_mode
         self.reset_mode: bool = reset_mode
@@ -83,6 +86,10 @@ class SchemaShot:
         # Создаем директорию для снэпшотов, если её нет
         if not self.snapshot_dir.exists():
             self.snapshot_dir.mkdir(parents=True)
+        cicd = self.snapshot_dir / "ci.cd"
+        if cicd.exists():
+            shutil.rmtree(cicd)
+        cicd.mkdir(parents=True)
 
     def _process_name(self, name: str | int | Callable | list[str | int | Callable]) -> str:
         """
@@ -123,11 +130,23 @@ class SchemaShot:
 
     def _save_process_original(self, real_name: str, status: Optional[bool], data: dict) -> None:
         json_name = f"{real_name}.json"
-        json_path = self.snapshot_dir / json_name
+        schema_name = f"{real_name}.schema.json"
+        base_j_path = self.snapshot_dir / json_name
+        base_s_path = self.snapshot_dir / json_name
+        if not self.ci_cd_mode:
+            json_path = base_j_path
+            schema_path = base_s_path
+        else:
+            json_path = self.snapshot_dir / "ci.cd" / json_name
+            schema_path = self.snapshot_dir / "ci.cd" / schema_name
 
         if self.save_original:
-            available_to_create = not json_path.exists() or status is None
-            available_to_update = status is True
+            available_to_create = (
+                (not json_path.exists() or status is None) and not self.ci_cd_mode
+            ) or (schema_path.exists() and not base_s_path.exists() and self.ci_cd_mode)
+            available_to_update = (status is True and not self.ci_cd_mode) or (
+                schema_path.exists() and base_s_path.exists() and self.ci_cd_mode
+            )
 
             if (available_to_create and self.update_actions.get("add")) or (
                 available_to_update and self.update_actions.get("update")
@@ -141,7 +160,7 @@ class SchemaShot:
                     GLOBAL_STATS.add_updated(json_name)
                 else:
                     raise ValueError(f"Unexpected status: {status}")
-        elif json_path.exists() and self.update_actions.get("delete"):
+        elif not self.ci_cd_mode and json_path.exists() and self.update_actions.get("delete"):
             # удаляем
             json_path.unlink()
             GLOBAL_STATS.add_deleted(json_name)
@@ -164,7 +183,7 @@ class SchemaShot:
 
         real_name, status = self._base_match(data, data, "json", real_name)
 
-        if self.update_mode or self.reset_mode:
+        if self.update_mode or self.reset_mode or self.ci_cd_mode:
             self._save_process_original(real_name=real_name, status=status, data=data)
 
         return status
@@ -215,11 +234,15 @@ class SchemaShot:
         # Проверка имени
         name = self._process_name(name)
 
-        schema_path = self.snapshot_dir / f"{name}.schema.json"
+        base_path = self.snapshot_dir / f"{name}.schema.json"
+        if not self.ci_cd_mode:
+            schema_path = base_path
+        else:
+            schema_path = self.snapshot_dir / "ci.cd" / f"{name}.schema.json"
         self.used_schemas.add(schema_path.name)
 
         # --- состояние ДО проверки ---
-        schema_exists_before = schema_path.exists()
+        schema_exists_before = base_path.exists()
 
         def make_schema(current_data: dict | list, type_data: Literal["json", "schema"]) -> dict:
             if type_data == "schema":
@@ -233,7 +256,7 @@ class SchemaShot:
 
         # --- когда схемы ещё нет ---
         if not schema_exists_before:
-            if not self.update_mode and not self.reset_mode:
+            if not self.update_mode and not self.reset_mode and not self.ci_cd_mode:
                 raise pytest.fail.Exception(
                     f"Schema `{name}` not found."
                     "Run the test with the --schema-update option to create it."
@@ -252,7 +275,7 @@ class SchemaShot:
             GLOBAL_STATS.add_created(schema_path.name)  # статистика «создана»
             return name, None
         else:
-            with open(schema_path, "r", encoding="utf-8") as f:
+            with open(base_path, "r", encoding="utf-8") as f:
                 existing_schema = json.load(f)
 
             # --- схема уже была: сравнение и валидация --------------------------------
@@ -275,9 +298,11 @@ class SchemaShot:
             if (
                 type_data == "json" or existing_schema != current_data
             ):  # есть отличия или могут быть
-                if (self.update_mode or self.reset_mode) and self.update_actions.get("update"):
+                if (
+                    self.update_mode or self.ci_cd_mode or self.reset_mode
+                ) and self.update_actions.get("update"):
                     # обновляем файл
-                    if self.reset_mode and not self.update_mode:
+                    if self.reset_mode and not self.update_mode and not self.ci_cd_mode:
                         current_schema = make_schema(current_data, type_data)
 
                         differences = self.differ.compare(
@@ -290,14 +315,18 @@ class SchemaShot:
                             with open(schema_path, "w", encoding="utf-8") as f:
                                 json.dump(current_schema, f, indent=2, ensure_ascii=False)
                             self.logger.warning(f"Schema `{name}` reseted.\n\n{differences}")
-                    elif self.update_mode and not self.reset_mode:
+                    elif self.update_mode or self.ci_cd_mode and not self.reset_mode:
                         merged_schema = merge_schemas(existing_schema, current_data, type_data)
 
                         differences = self.differ.compare(
                             dict(existing_schema), merged_schema
                         ).render()
                         diff_count = self.differ.property.calc_diff()
-                        if any(diff_count[key] > 0 for key in diff_count if key != "UNKNOWN"):
+                        if any(
+                            diff_count[key] > 0
+                            for key in diff_count
+                            if key not in ["UNKNOWN", "NO_DIFF"]
+                        ):
                             GLOBAL_STATS.add_updated(schema_path.name, differences)
 
                             with open(schema_path, "w", encoding="utf-8") as f:
@@ -306,7 +335,8 @@ class SchemaShot:
                             self.logger.warning(f"Schema `{name}` updated.\n\n{differences}")
                     else:  # both update_mode and reset_mode are True
                         raise ValueError(
-                            "Both update_mode and reset_mode cannot be True at the same time."
+                            "update_mode, ci_cd_mode and reset_mode"
+                            " cannot be True at the same time."
                         )
                     schema_updated = True
                 elif data is not None:
