@@ -101,13 +101,13 @@ class SchemaShot:
         # и поднимаем уровень, чтобы INFO/DEBUG прошли через handler
         self.logger.setLevel(logging.INFO)
 
-        # Создаем директорию для снэпшотов, если её нет
-        if not self.snapshot_dir.exists():
-            self.snapshot_dir.mkdir(parents=True)
-        cicd = self.snapshot_dir / "ci.cd"
-        if cicd.exists():
-            shutil.rmtree(cicd)
-        cicd.mkdir(parents=True)
+        # ci.cd is only needed in dedicated CI/CD mode. Touching it in every worker
+        # causes avoidable races under pytest-xdist.
+        self.snapshot_dir.mkdir(parents=True, exist_ok=True)
+        if self.ci_cd_mode:
+            cicd = self.snapshot_dir / "ci.cd"
+            shutil.rmtree(cicd, ignore_errors=True)
+            cicd.mkdir(parents=True, exist_ok=True)
 
     def _is_format_annotation_enabled(self) -> bool:
         return self.format_mode in {"on", "safe"}
