@@ -8,13 +8,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "description": {
-      "type": "string"
+      "type": "string",
+      "j2sEnumRejected": true
     },
     "name": {
-      "type": "string"
+      "type": "string",
+      "j2sEnumRejected": true
     },
     "status": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "active"
+      ]
     }
   }
 }

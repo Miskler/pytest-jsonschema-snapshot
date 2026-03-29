@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "required": [
+    "billing_address",
+    "delivery_method",
+    "shipping_address"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "billing_address": {
+      "$ref": "#/$defs/Object1"
+    },
+    "delivery_method": {
+      "type": "string",
+      "enum": [
+        "pickup"
+      ]
+    },
+    "shipping_address": {
+      "$ref": "#/$defs/Object1"
+    }
+  },
+  "$defs": {
+    "Object1": {
+      "type": "object",
+      "required": [
+        "city",
+        "street",
+        "zip"
+      ],
+      "minProperties": 1,
+      "properties": {
+        "city": {
+          "type": "string",
+          "enum": [
+            "Moscow"
+          ]
+        },
+        "street": {
+          "type": "string",
+          "enum": [
+            "Main st",
+            "Oak st"
+          ]
+        },
+        "zip": {
+          "type": "string",
+          "j2sEnumRejected": true
+        }
+      }
+    }
+  }
+}

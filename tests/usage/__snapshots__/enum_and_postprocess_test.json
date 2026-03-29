@@ -1,0 +1,13 @@
+{
+  "delivery_method": "pickup",
+  "billing_address": {
+    "street": "Main st",
+    "city": "Moscow",
+    "zip": "101000"
+  },
+  "shipping_address": {
+    "street": "Oak st",
+    "city": "Moscow",
+    "zip": "101001"
+  }
+}

@@ -27,8 +27,10 @@
 
 ![image](https://github.com/user-attachments/assets/2faa2548-5af2-4dc9-8d8d-b32db1d87be8)
 
-* Automatic JSON Schema generation from data examples (using the `genson` library).
+* Automatic JSON Schema generation from data examples (using the `genschema` library).
 * **Format detection**: Automatic detection and validation of string formats (email, UUID, date, date-time, URI, IPv4).
+* **Enum inference**: Short low-cardinality string fields are narrowed to `enum` automatically.
+* **Schema post-processing**: Repeated structures are extracted into `$defs`/`$ref` to keep generated schemas smaller and easier to review.
 * Schema storage and management.
 * Validation of data against saved schemas.
 * Schema update via `--schema-update` (create new schemas, remove unused ones, update existing).
@@ -52,8 +54,10 @@ pip install pytest-jsonschema-snapshot
 
 1. Use the `schemashot` fixture in your tests
   ```python
+  import pytest
+
   from you_lib import API
-  from typed_schema_shot import SchemaShot
+  from pytest_jsonschema_snapshot import SchemaShot
 
   @pytest.mark.asyncio
   async def test_something(schemashot: SchemaShot):
@@ -68,7 +72,7 @@ pip install pytest-jsonschema-snapshot
       # There is a schema (data is optional) - validate by what is
       schemashot.assert_schema_match(
           schema,
-          (API.get_schema, "test_name", 1) # == `API.get_schema.test_name.1` filename
+          (API.get_schema, "test_name", 1), # == `API.get_schema.test_name.1` filename
           data=data # data for validation (optional)
       )
   ```
@@ -86,6 +90,9 @@ pip install pytest-jsonschema-snapshot
    pytest
    ```
 
+Generated schemas are refined by `genschema` before they are written:
+format detection, enum inference for short low-cardinality strings, and post-processing that extracts repeated fragments into `$defs`/`$ref`.
+
 <div align="center">
 
 ## 👀 Key Capabilities
@@ -94,6 +101,8 @@ pip install pytest-jsonschema-snapshot
 
 * **Union Types**: support multiple possible types for fields
 * **Optional Fields**: automatic detection of required and optional fields
+* **Enum Narrowing**: generated schemas can automatically emit `enum` for short string fields with a small set of observed values
+* **Reference Extraction**: repeated object/array shapes can be factored into `$defs` and reused via `$ref`
 * **Format Detection**: automatic detection of string formats including:
 
   | Format | Example | JSON Schema |

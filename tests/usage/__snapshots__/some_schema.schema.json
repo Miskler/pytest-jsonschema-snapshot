@@ -13,7 +13,10 @@
       "type": "null"
     },
     "обязательная": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "строка"
+      ]
     },
     "разнотипный_массив": {
       "type": "array",
@@ -23,7 +26,10 @@
             "type": "null"
           },
           {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "строка"
+            ]
           },
           {
             "type": "object",
@@ -32,7 +38,10 @@
             ],
             "properties": {
               "ключ": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "значение"
+                ]
               }
             }
           }
@@ -69,13 +78,20 @@
           }
         },
         "дополнительное_поле": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "для обновления"
+          ]
         },
         "ключ": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "значение"
+          ]
         },
         "пустое_значение": {
-          "type": "string"
+          "type": "string",
+          "j2sEnumRejected": true
         },
         "пустое_число": {
           "type": "integer"
@@ -119,7 +135,10 @@
             ],
             "properties": {
               "ключ": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "значение"
+                ]
               },
               "лишний_ключ": {
                 "type": "null"
@@ -136,12 +155,19 @@
           "имя": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "Иван"
+                ]
               },
               {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "enum": [
+                    "Мария",
+                    "Анна"
+                  ]
                 }
               }
             ]

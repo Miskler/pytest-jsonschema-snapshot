@@ -11,7 +11,10 @@
       "type": "null"
     },
     "обязательная": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "строка"
+      ]
     },
     "словарь": {
       "type": "object",
@@ -21,7 +24,10 @@
       ],
       "properties": {
         "ключ": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "значение"
+          ]
         },
         "число": {
           "type": "integer"

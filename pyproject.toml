@@ -12,7 +12,7 @@ authors = [
   { name = "Miskler" }
 ]
 license = { text = "MIT" }
-keywords = ["pytest", "json", "schema", "validation", "genson", "rich"]
+keywords = ["pytest", "json", "schema", "validation", "genschema", "rich"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -27,7 +27,7 @@ classifiers = [
   "Topic :: Utilities"
 ]
 dependencies = [
-  "genschema",
+  "genschema>=0.2.0",
   "pathvalidate",
   "jsonschema",
   "jsonschema-diff",

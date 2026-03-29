@@ -1,4 +1,4 @@
-genschema
+genschema>=0.2.0
 pathvalidate
 jsonschema
 jsonschema-diff

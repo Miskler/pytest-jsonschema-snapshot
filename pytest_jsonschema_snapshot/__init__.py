@@ -8,5 +8,5 @@ pytest-typed-schema-shot
 
 from .core import SchemaShot
 
-__version__ = "0.2.8"
+__version__ = "0.2.9"
 __all__ = ["SchemaShot"]

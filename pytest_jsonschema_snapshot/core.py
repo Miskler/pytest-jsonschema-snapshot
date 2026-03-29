@@ -17,9 +17,15 @@ import pytest
 from genschema import Converter, PseudoArrayHandler
 from genschema.comparators import (
     DeleteElement,
+    EmptyComparator,
+    EnumComparator,
     FormatComparator,
     RequiredComparator,
     SchemaVersionComparator,
+)
+from genschema.postprocessing import (
+    SchemaReferenceExtractionConfig,
+    SchemaReferencePostprocessor,
 )
 from jsonschema import FormatChecker, ValidationError, validate
 
@@ -53,7 +59,7 @@ class SchemaShot:
         self.root_dir: Path = root_dir
         self.differ: "JsonSchemaDiff" = differ
         self.callable_regex: str = callable_regex
-        self.format_mode: str = format_mode
+        self.format_mode: str = format_mode.lower()
         self.ci_cd_mode: bool = ci_cd_mode
         # self.examples_limit: int = examples_limit
         self.update_mode: bool = update_mode
@@ -64,16 +70,28 @@ class SchemaShot:
         self.snapshot_dir: Path = root_dir / snapshot_dir_name
         self.used_schemas: set[str] = set()
 
+        if self.format_mode not in {"on", "safe", "off"}:
+            raise ValueError(
+                "Invalid jsss_format_mode value. Expected one of: 'on', 'safe', 'off'."
+            )
+
         self.conv = Converter(
             pseudo_handler=PseudoArrayHandler(),
             base_of="anyOf",
         )
-        self.conv.register(FormatComparator())
+        if self._is_format_annotation_enabled():
+            self.conv.register(FormatComparator())
+        self.conv.register(EnumComparator())
         self.conv.register(RequiredComparator())
         # self.conv.register(EmptyComparator())
         self.conv.register(SchemaVersionComparator())
         self.conv.register(DeleteElement())
         self.conv.register(DeleteElement("isPseudoArray"))
+        self.reference_extraction_config = SchemaReferenceExtractionConfig(
+            merge_base_of="anyOf",
+            merge_pseudo_handler=PseudoArrayHandler(),
+            merge_comparator_factories=self._make_reference_extraction_comparator_factories(),
+        )
 
         self.logger = logging.getLogger(__name__)
         # добавляем вывод в stderr
@@ -90,6 +108,36 @@ class SchemaShot:
         if cicd.exists():
             shutil.rmtree(cicd)
         cicd.mkdir(parents=True)
+
+    def _is_format_annotation_enabled(self) -> bool:
+        return self.format_mode in {"on", "safe"}
+
+    def _is_format_validation_enabled(self) -> bool:
+        return self.format_mode == "on"
+
+    def _make_reference_extraction_comparator_factories(self) -> tuple[Callable[[], Any], ...]:
+        factories: list[Callable[[], Any]] = []
+        if self._is_format_annotation_enabled():
+            factories.append(FormatComparator)
+        factories.extend(
+            (
+                EnumComparator,
+                RequiredComparator,
+                EmptyComparator,
+                DeleteElement,
+                lambda: DeleteElement("isPseudoArray"),
+            )
+        )
+        return tuple(factories)
+
+    def _finalize_generated_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
+        return SchemaReferencePostprocessor.process(schema, self.reference_extraction_config)
+
+    def _validate_instance(self, instance: Any, schema: dict[str, Any]) -> None:
+        validate_kwargs: dict[str, Any] = {}
+        if self._is_format_validation_enabled():
+            validate_kwargs["format_checker"] = FormatChecker()
+        validate(instance=instance, schema=schema, **validate_kwargs)
 
     def _process_name(self, name: str | int | Callable | list[str | int | Callable]) -> str:
         """
@@ -250,7 +298,7 @@ class SchemaShot:
             elif type_data == "json":
                 self.conv.clear_data()
                 self.conv.add_json(current_data)
-                return self.conv.run()
+                return self._finalize_generated_schema(self.conv.run())
             else:
                 raise ValueError("Not correct type argument")
 
@@ -293,6 +341,8 @@ class SchemaShot:
                 else:
                     raise ValueError("Not correct type argument")
                 result = self.conv.run()
+                if type_data == "json":
+                    result = self._finalize_generated_schema(result)
                 return result
 
             if (
@@ -305,11 +355,10 @@ class SchemaShot:
                     if self.reset_mode and not self.update_mode and not self.ci_cd_mode:
                         current_schema = make_schema(current_data, type_data)
 
-                        differences = self.differ.compare(
-                            dict(existing_schema), current_schema
-                        ).render()
-                        diff_count = self.differ.property.calc_diff()
-                        if any(diff_count[key] > 0 for key in diff_count if key != "UNKNOWN"):
+                        if existing_schema != current_schema:
+                            differences = self.differ.compare(
+                                dict(existing_schema), current_schema
+                            ).render()
                             GLOBAL_STATS.add_updated(schema_path.name, differences)
 
                             with open(schema_path, "w", encoding="utf-8") as f:
@@ -318,15 +367,10 @@ class SchemaShot:
                     elif self.update_mode or self.ci_cd_mode and not self.reset_mode:
                         merged_schema = merge_schemas(existing_schema, current_data, type_data)
 
-                        differences = self.differ.compare(
-                            dict(existing_schema), merged_schema
-                        ).render()
-                        diff_count = self.differ.property.calc_diff()
-                        if any(
-                            diff_count[key] > 0
-                            for key in diff_count
-                            if key not in ["UNKNOWN", "NO_DIFF"]
-                        ):
+                        if existing_schema != merged_schema:
+                            differences = self.differ.compare(
+                                dict(existing_schema), merged_schema
+                            ).render()
                             GLOBAL_STATS.add_updated(schema_path.name, differences)
 
                             with open(schema_path, "w", encoding="utf-8") as f:
@@ -342,16 +386,16 @@ class SchemaShot:
                 elif data is not None:
                     merged_schema = merge_schemas(existing_schema, current_data, type_data)
 
-                    differences = self.differ.compare(dict(existing_schema), merged_schema).render()
-                    GLOBAL_STATS.add_uncommitted(schema_path.name, differences)
+                    differences = ""
+                    if existing_schema != merged_schema:
+                        differences = self.differ.compare(
+                            dict(existing_schema), merged_schema
+                        ).render()
+                        GLOBAL_STATS.add_uncommitted(schema_path.name, differences)
 
                     # только валидируем по старой схеме
                     try:
-                        validate(
-                            instance=data,
-                            schema=existing_schema,
-                            format_checker=FormatChecker(),
-                        )
+                        self._validate_instance(instance=data, schema=existing_schema)
                     except ValidationError as e:
                         pytest.fail(
                             f"\n\n{differences}\n\nValidation error in `{name}`: {e.message}"
@@ -359,15 +403,15 @@ class SchemaShot:
             elif data is not None and type_data == "schema":
                 # схемы совпали – всё равно валидируем на случай формальных ошибок
                 try:
-                    validate(
-                        instance=data,
-                        schema=existing_schema,
-                        format_checker=FormatChecker(),
-                    )
+                    self._validate_instance(instance=data, schema=existing_schema)
                 except ValidationError as e:
                     merged_schema = merge_schemas(existing_schema, current_data, type_data)
 
-                    differences = self.differ.compare(dict(existing_schema), merged_schema).render()
+                    differences = ""
+                    if existing_schema != merged_schema:
+                        differences = self.differ.compare(
+                            dict(existing_schema), merged_schema
+                        ).render()
                     pytest.fail(f"\n\n{differences}\n\nValidation error in `{name}`: {e.message}")
 
             return name, schema_updated

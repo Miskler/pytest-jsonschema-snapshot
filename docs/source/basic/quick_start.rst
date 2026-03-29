@@ -41,6 +41,15 @@ Choose the option that best suits your project:
 * **jsss_callable_regex**: the rule for interpreting the callable name.
 * **jsss_format_mode**: "on" (annotate and validate), "safe" (annotate), "off" (disable).
 
+Automatic schema generation is powered by `genschema`.
+When you call :meth:`~pytest_jsonschema_snapshot.core.SchemaShot.assert_json_match`,
+the plugin generates a schema from the observed JSON, enables format inference,
+enables enum inference for short low-cardinality strings, and runs post-processing
+that extracts repeated fragments into ``$defs``/``$ref``.
+
+By contrast, :meth:`~pytest_jsonschema_snapshot.core.SchemaShot.assert_schema_match`
+accepts your explicit JSON Schema as-is and only uses the merge/update pipeline when needed.
+
 Next, you can use the fixture in your tests:
 --------------------------------------------
 
@@ -69,7 +78,7 @@ Next, you can use the fixture in your tests:
                     "content"
                 ]
             },
-            ("test_name", 1) # == `test_name.1` name of the schema
+            ("test_name", 1), # == `test_name.1` name of the schema
             data={"content": {"key": "value"}} # data for validation (optional)
         )
 
